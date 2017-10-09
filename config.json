@@ -1,0 +1,20 @@
+{
+  "server": {
+    "name": "odata",
+    "port": 3000,
+    "serviceName": "data.svc",
+    "useHttps": true
+  },
+  "mysql": {
+    "host": "localhost",
+    "user": "root",
+    "password": "",
+    "database": "odata"
+  },
+  "data": {
+    "defaultFormat": "json"
+  },
+  "global": {
+    "modelName": "DataModel"
+  }
+}
