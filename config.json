@@ -3,7 +3,9 @@
     "name": "odata",
     "port": 3000,
     "serviceName": "data.svc",
-    "useHttps": true
+    "useHttps": true,
+    "httpVersion": "1.1",
+    "dataServiceVersion":"1.0"
   },
   "mysql": {
     "host": "localhost",

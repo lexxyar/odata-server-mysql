@@ -13,7 +13,7 @@ Person = function () {
         if (err) throw err;
 
         res.forEach(function (row) {
-            flds.forEach(function (item, i, arr) {
+            flds.forEach(function (item) {
                 that[item.name] = row[item.name];
             });
         });
@@ -94,8 +94,8 @@ Person.prototype.getMiddleName = function () {
     return this.name3;
 };
 
-Person.prototype.getData = function (oResponse) {
-    var personArray = [];
+Person.prototype.getData = function (/*oResponse*/) {
+    // var personArray = [];
     // console.log("getData");
     db.query("SELECT * FROM v_person", function (err, res, flds) {
         if (err) {
@@ -106,7 +106,7 @@ Person.prototype.getData = function (oResponse) {
         var r = {"d": {"results": res}};
 
         console.log(r);
-        // oResponse.setHeader("Content-Length", Buffer.byteLength(res));
+        // oResponse.addHeader("Content-Length", Buffer.byteLength(res));
         // oResponse.end(oDataFormatter.format(r));
         return r;
     });
@@ -115,8 +115,8 @@ Person.prototype.getData = function (oResponse) {
 
 //noinspection JSAnnotator
 Person.prototype.getList = function (oOptions, fnCallback) {
-    var personArray = [];
-    var data;
+    // var personArray = [];
+    // var data;
 
     var aWhere = [];
     if (typeof (oOptions.keys) !== undefined) {

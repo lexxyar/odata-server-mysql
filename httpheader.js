@@ -1,338 +1,171 @@
 /**
  * Created by lexxy_000 on 20.09.2017.
  */
-HttpHeader.ContentType = {
-    Text: "text/plain",
-    Xml: "application/xml",
-    Html: "text/html",
-    Json: "application/json",
-    Mixed: "multipart/mixed",
-    Http: "application/http"
-};
+var KeyValueObject = require("./keyvalueobject");
 
 HttpHeader = function () {
-    this.oContentType = {
-        bText: false,
-        bXml: false,
-        bHtml: false,
-        bJson: false,
-        bMixed: false,
-        bHttp: false
-    };
-    this.oContentType2 = {
-        bText: false,
-        bXml: false,
-        bHtml: false,
-        bJson: false,
-        bMixed: false,
-        bHttp: false
-    };
-    this.oCacheControl = {
-        bNocache: false,
-        bNostore: false,
-        bNotransform: false,
-        bMustrevalidate: false,
-        bPublic: false,
-        bPrivate: true,
-        bProxyrevalidate: false,
-        iMaxage: -1,
-        iSmaxage: -1
-    };
-    this.oAccessControl = {
-        oAllow: {
-            oMethods: {
-                bConnect: false,
-                bDelete: true,
-                bGet: true,
-                bHead: false,
-                bOption: false,
-                bPatch: false,
-                bPost: true,
-                bPut: true
-            }
-            ,
-            sOrigin: "*",
-            oHeaders: {
-                bAccept: true,
-                bOrigin: true,
-                bContentType: true,
-                bMaxDataServiceVersion: true,
-                bContentLength: false,
-                bSapContextidAccept: true,
-                bXCsrfToken: true,
-                bSapCancelOnClose: true,
-                bDataServiceVersion: true
-            }
-        }
-        ,
-        oExpose: {
-            oHeaders: {
-                bCacheControl: false,
-                bContentLanguage: false,
-                bContentType: false,
-                bExpires: false,
-                bLastModified: false,
-                bPragma: false,
-                bContentLength: true,
-
-                bVary: false,
-                bServer: false,
-                bDataserviceversion: false,
-                bDate: false,
-                bConnection: false,
-                bXFinalUrl: false,
-                bAccessControlAllowOrigin: false
-            }
-        }
-    };
-    this.bContentTransferEncodingBinary = false;
-    this.sDataServiceVersion = "1.0";
-
+    this.sContentTransferEncoding = "";
+    this.sDataServiceVersion = "";
+    this.aAccessControlExposeHeaders = [];
+    this.aAccessControlAllowHeaders = [];
+    this.sAccessControlAllowOrigin = "";
+    this.aAccessControlAllowMethods = [];
+    this.sBatchId = "";
+    this.sContentType = "";
+    this.aCacheControl = [];
+    this.iMaxage = -1;
+    this.iSmaxage = -1;
+    this.sContentTypeCharset = "";
+    this.iContentLength = -1;
 };
 
+HttpHeader.prototype.setContentLength = function (iValue) {
+    this.iContentLength = iValue;
+};
+HttpHeader.prototype.calculateContentLength = function (sValue) {
+    this.iContentLength = Buffer.byteLength(sValue);
+};
+HttpHeader.prototype.getContentLength = function () {
+    return new KeyValueObject("Content-Length", this.iContentLength);
+};
 
-/**
- *
- */
+HttpHeader.prototype.setDataServiceVersion = function (sVersion) {
+    this.sDataServiceVersion = sVersion;
+};
 HttpHeader.prototype.getDataServiceVersion = function () {
-    var oRet = {key: "DataServiceVersion", value: this.sDataServiceVersion};
-    return oRet;
+    return new KeyValueObject("DataServiceVersion", this.sDataServiceVersion);
 };
 
-/**
- *
- */
+HttpHeader.prototype.setContentTransferEncoding = function (sEncoding) {
+    this.sContentTransferEncoding = sEncoding;
+};
 HttpHeader.prototype.getContentTransferEncoding = function () {
-    var oRet = {key: "Content-Transfer-Encoding", value: this.bContentTransferEncodingBinary ? "binary" : "binary"};
-    return oRet;
+    return new KeyValueObject("Content-Transfer-Encoding", this.sContentTransferEncoding);
 };
 
-/**
- *
- * @returns {{key: string, value: string}}
- */
+HttpHeader.prototype.setAccessControlExposeHeaders = function (aHeaders) {
+    this.aAccessControlExposeHeaders = aHeaders;
+};
 HttpHeader.prototype.getAccessControlExposeHeaders = function () {
-    var aVals = [];
-    var oCases = this.oAccessControl.oExpose.oHeaders;
+    return new KeyValueObject("Access-Control-Expose-Headers", this.aAccessControlExposeHeaders.join(","));
+};
 
-    if (oCases.bCacheControl) {
-        aVals.push("Cache-Control");
-    }
-    if (oCases.bContentLanguage) {
-        aVals.push("Content-Language");
-    }
-    if (oCases.bContentType) {
-        aVals.push("Content-Type");
-    }
-    if (oCases.bExpires) {
-        aVals.push("Expires");
-    }
-    if (oCases.bLastModified) {
-        aVals.push("Last-Modified");
-    }
-    if (oCases.bPragma) {
-        aVals.push("Pragma");
-    }
-    if (oCases.bContentLength) {
-        aVals.push("Content-Length");
-    }
-
-    if (oCases.bVary) {
-        aVals.push("vary");
-    }
-    if (oCases.bServer) {
-        aVals.push("server");
-    }
-    if (oCases.bDataserviceversion) {
-        aVals.push("dataserviceversion");
-    }
-    if (oCases.bDate) {
-        aVals.push("date");
-    }
-    if (oCases.bConnection) {
-        aVals.push("connection");
-    }
-    if (oCases.bXFinalUrl) {
-        aVals.push("x-final-url");
-    }
-    if (oCases.bAccessControlAllowOrigin) {
-        aVals.push("access-control-allow-origin");
-    }
-
-    var oRet = {key: "Access-Control-Expose-Headers", value: aVals.join(",")};
-    return oRet;
-}
-
-/**
- *
- * @returns {{key: string, value: string}}
- */
+HttpHeader.prototype.setAccessControlAllowHeaders = function (aHeaders) {
+    this.aAccessControlAllowHeaders = aHeaders;
+};
 HttpHeader.prototype.getAccessControlAllowHeaders = function () {
-    var aVals = [];
-    var oCases = this.oAccessControl.oAllow.oHeaders;
+    return new KeyValueObject("Access-Control-Allow-Headers", this.aAccessControlAllowHeaders.join(","));
+};
 
-    if (oCases.bAccept) {
-        aVals.push("Accept");
-    }
-    if (oCases.bOrigin) {
-        aVals.push("Origin");
-    }
-    if (oCases.bContentType) {
-        aVals.push("Content-Type");
-    }
-    if (oCases.bMaxDataServiceVersion) {
-        aVals.push("MaxDataServiceVersion");
-    }
-    if (oCases.bContentLength) {
-        aVals.push("Content-Length");
-    }
-    if (oCases.bSapContextidAccept) {
-        aVals.push("sap-contextid-accept");
-    }
-    if (oCases.bXCsrfToken) {
-        aVals.push("x-csrf-token");
-    }
-    if (oCases.bSapCancelOnClose) {
-        aVals.push("sap-cancel-on-close");
-    }
-    if (oCases.bDataServiceVersion) {
-        aVals.push("DataServiceVersion");
-    }
-
-
-    var oRet = {key: "Access-Control-Allow-Headers", value: aVals.join(",")};
-    return oRet;
-}
-
-/**
- *
- * @returns {{key: string, value: string}}
- */
+HttpHeader.prototype.setAccessControlAllowOrigin = function (sValue) {
+    this.sAccessControlAllowOrigin = sValue;
+};
 HttpHeader.prototype.getAccessControlAllowOrigin = function () {
-    var oRet = {key: "", value: ""};
-    if (this.oAccessControl.oAllow.sOrigin != "") {
-        oRet = {key: "Access-Control-Allow-Origin", value: this.oAccessControl.oAllow.sOrigin};
-    }
-    return oRet;
-}
+    return this.sAccessControlAllowOrigin == "" ? null : new KeyValueObject("Access-Control-Allow-Origin", this.sAccessControlAllowOrigin);
+};
 
-/**
- *
- * @returns {{key: string, value: string}}
- */
+HttpHeader.prototype.setAccessControlAllowMethods = function (aMethods) {
+    this.aAccessControlAllowMethods = aMethods;
+};
 HttpHeader.prototype.getAccessControlAllowMethods = function () {
-    var aVals = [];
-    var oCases = this.oAccessControl.oAllow.oMethods;
+    return new KeyValueObject("Access-Control-Allow-Methods", this.aAccessControlAllowMethods.join(","));
+};
 
-    if (oCases.bConnect) {
-        aVals.push("CONECT");
-    }
-    if (oCases.bDelete) {
-        aVals.push("DELETE");
-    }
-    if (oCases.bGet) {
-        aVals.push("GET");
-    }
-    if (oCases.bHead) {
-        aVals.push("HEAD");
-    }
-    if (oCases.bOption) {
-        aVals.push("OPTION");
-    }
-    if (oCases.bPatch) {
-        aVals.push("PATCH");
-    }
-    if (oCases.bPost) {
-        aVals.push("POST");
-    }
-    if (oCases.bPut) {
-        aVals.push("PUT");
-    }
-
-    var oRet = {key: "Access-Control-Allow-Methods", value: aVals.join(",")};
-    return oRet;
-}
-
-/**
- *
- * @returns {{key: string, value: string}}
- */
+HttpHeader.prototype.setMaxage = function (iValue) {
+    this.iMaxage = iValue;
+};
+HttpHeader.prototype.setSMaxage = function (iValue) {
+    this.iSMaxage = iValue;
+};
+HttpHeader.prototype.setCacheControl = function (aCaches) {
+    this.aCacheControl = aCaches;
+};
 HttpHeader.prototype.getCacheControl = function () {
-    var aVals = [];
-    var oCases = this.oCacheControl;
+    // var aVals = [];
+    var aVals = this.aCacheControl;
 
-
-    if (oCases.bMustrevalidate) {
-        aVals.push("must-revalidate");
-    }
-    if (oCases.bNocache) {
-        aVals.push("no-cache");
-    }
-    if (oCases.bNostore) {
-        aVals.push("no-store");
-    }
-    if (oCases.bNotransform) {
-        aVals.push("no-transform");
-    }
-    if (oCases.bPrivate) {
-        aVals.push("private");
-    }
-    if (oCases.bProxyrevalidate) {
-        aVals.push("proxy-revalidate");
-    }
-    if (oCases.bPublic) {
-        aVals.push("public");
-    }
-
-    if (oCases.iMaxage > -1) {
+    if (this.iMaxage > -1) {
         aVals.push("max-age=" + oCases.iMaxage);
     }
-    if (oCases.iSmaxage > -1) {
+    if (this.iSmaxage > -1) {
         aVals.push("s-maxage=" + oCases.iSmaxage);
     }
 
-    var oRet = {key: "Cache-Control", value: aVals.join(",")};
-    return oRet;
-}
+    return new KeyValueObject("Cache-Control", aVals.join(","));
+};
 
-/**
- *
- * @param bUtf8
- * @returns {{key: string, value: string}}
- */
-HttpHeader.prototype.getContentType = function (bUtf8, sBatchId, b2) {
-    bUtf8 = typeof (bUtf8) === "undefined" ? true : bUtf8;
-    sBatchId = typeof (sBatchId) === "undefined" ? "" : "; boundary=" + sBatchId;
-    b2 = typeof (b2) === "undefined" ? false : b2;
-    var sUtf8 = bUtf8 ? ";charset=utf-8" : "";
-    var sValue = "";
-    var oCases = b2 ? this.oContentType2 : this.oContentType;
-    switch (true) {
-        case oCases.bHtml:
-            sValue = "text/html";
-            break;
-        case oCases.bJson:
-            sValue = "application/json";
-            break;
-        case oCases.bText:
-            sValue = "text/plain";
-            break;
-        case oCases.bXml:
-            sValue = "application/xml";
-            break;
-        case oCases.bMixed:
-            sValue = "multipart/mixed" + sBatchId;
-            break;
-        case oCases.bHttp:
-            sValue = "application/http";
-            break;
-        default:
-            sValue = "text/plain";
-            break;
+HttpHeader.prototype.getBatchId = function () {
+    return this.sBatchId;
+};
+HttpHeader.prototype.setBatchId = function (sValue) {
+    this.sBatchId = sValue;
+};
+HttpHeader.prototype.getBatchBoundary = function () {
+    return this.sBatchId == "" ? "" : ";boundary=" + this.sBatchId;
+};
+
+HttpHeader.prototype.setContentTypeCharset = function (sValue) {
+    this.sContentTypeCharset = sValue;
+};
+HttpHeader.prototype.getContentTypeCharset = function () {
+    return this.sContentTypeCharset == "" ? "" : ";charset=" + this.sContentTypeCharset;
+};
+HttpHeader.prototype.setContentType = function (sValue) {
+    this.sContentType = sValue;
+};
+HttpHeader.prototype.getContentType = function () {
+    var sValue = this.sContentType;
+    sValue = sValue + this.getContentTypeCharset() + this.getBatchBoundary();
+    return new KeyValueObject("Content-Type", sValue);
+};
+
+HttpHeader.prototype.toString = function () {
+    var aLines = [];
+    var aHeaders = this.toArray();
+    for(var iPosition in aHeaders){
+        var oValue = aHeaders[iPosition];
+        aLines.push(oValue.toString(": "));
     }
-    sValue += sUtf8;
-    var oRet = {key: "Content-Type", value: sValue};
-    return oRet;
-}
+
+    return aLines.join("\r\n");
+};
+
+HttpHeader.prototype.toArray = function () {
+    var aLines = [];
+    if (this.sContentType.trim() !== "") {
+        aLines.push(this.getContentType());
+    }
+    if (this.aCacheControl.length > 0) {
+        aLines.push(this.getCacheControl());
+    }
+    if (this.aAccessControlAllowMethods.length > 0) {
+        aLines.push(this.getAccessControlAllowMethods());
+    }
+    if (this.aCacheControl.length > 0) {
+        aLines.push(this.getCacheControl());
+    }
+    if (this.aAccessControlAllowMethods.length > 0) {
+        aLines.push(this.getAccessControlAllowMethods());
+    }
+    if (this.sAccessControlAllowOrigin !== "") {
+        aLines.push(this.getAccessControlAllowOrigin());
+    }
+    if (this.aAccessControlAllowHeaders.length > 0) {
+        aLines.push(this.getAccessControlAllowHeaders());
+    }
+    if (this.aAccessControlExposeHeaders.length > 0) {
+        aLines.push(this.getAccessControlExposeHeaders());
+    }
+    if (this.sContentTransferEncoding !== "") {
+        aLines.push(this.getContentTransferEncoding());
+    }
+    if (this.sDataServiceVersion !== "") {
+        aLines.push(this.getDataServiceVersion());
+    }
+    if (this.iContentLength !== -1) {
+        aLines.push(this.getContentLength());
+    }
+    return aLines;
+};
 
 module.exports = HttpHeader;

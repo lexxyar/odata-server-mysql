@@ -1,4 +1,5 @@
 var oConfig = require("./config.json");
+var oConst = require("./constants.json");
 
 var server = null;
 if (oConfig.server.useHttps) {
@@ -14,7 +15,7 @@ if (oConfig.server.useHttps) {
     server = new https.Server(options);
 } else {
     var http = require("http");
-    var server = new http.Server();
+    server = new http.Server();
 }
 
 var querystring = require("querystring");
@@ -25,6 +26,8 @@ var Metadata = require("./metadata");
 var HttpHeader = require("./httpheader");
 var ODataEntity = require("./entity/odataentity");
 var Batch = require("./batch");
+var BatchResponse = require("./batchresponse");
+var BatchItem = require("./batchitem");
 
 
 // var server = new http.Server();
@@ -54,62 +57,79 @@ function proc(request, response, fnCallback) {
 }
 
 server.on("request", function (req, res) {
+    res.statusCode = 200;
     var oUri = new Request(req);
     var oRes = new Response(res);
     var oHttpHeader = new HttpHeader();
 
     if (oUri.isFavicon()) {
-        oRes.oConfig.oStatusCode.bAccepted = true;
+        oRes.setStatusCode(oConst.StatusCode.Accepted);
         oRes.end();
         return;
     }
 
     if (oUri.sServiceName != oConfig.server.serviceName) {
-        oRes.oConfig.oStatusCode.bNotFound = true;
+        oRes.setStatusCode(oConst.StatusCode.NotFound);
         oRes.write("Page not found");
         oRes.end();
         return;
     }
 
     if (oUri.isOptions()) {
+        oHttpHeader = new HttpHeader();
+        oHttpHeader.setAccessControlAllowOrigin("*");
+        oHttpHeader.setAccessControlAllowHeaders([
+            oConst.AccessControlHeader.SapContextidAccept,
+            oConst.AccessControlHeader.MaxDataServiceVersion,
+            oConst.AccessControlHeader.XCsrfToken,
+            oConst.AccessControlHeader.ContentType,
+            oConst.AccessControlHeader.DataServiceVersion,
+            oConst.AccessControlHeader.SapCancelOnClose
+        ]);
+
+        // For Bathch
+        // if (oUri.isBatch()) {
+        //     oHttpHeader.setAccessControlAllowHeaders([oConst.AccessControlHeader.XCsrfToken, oConst.AccessControlHeader.DataServiceVersion]);
+        // }
+
+        oRes.setStatusCode(oConst.StatusCode.OK);
         oRes.end(oHttpHeader);
         return;
     }
 
     if (oUri.isError()) {
-        oRes.oConfig.oStatusCode.bNotFound = true;
-        oHttpHeader.oContentType.bJson = true;
+        oHttpHeader = new HttpHeader();
+        oRes.setStatusCode(oConst.StatusCode.NotFound);
+        oHttpHeader.setContentType(oConst.ContentType.Json);
         oRes.write(JSON.stringify(oUri.oError.getError()));
         oRes.end(oHttpHeader);
         return;
     }
 
     if(oUri.isHead()){
-        oRes.oConfig.oStatusCode.bNotImplemented = true;
-        oHttpHeader.oContentType.bJson = true;
+        oHttpHeader = new HttpHeader();
+        oRes.setStatusCode(oConst.StatusCode.NotImplemented);
+        oHttpHeader.setContentType(oConst.ContentType.Json);
         oRes.end(oHttpHeader);
         return;
     }
 
     if (oUri.isGet()) {
-        if (oUri.isBatch()) {
-            proc(req, res, function (sQueryData) {
-                var oBatch = new Batch();
-                oBatch.Parse(sQueryData);
-                oBatch.getRequest(0);
-                oRes.end(oHttpHeader);
-            });
-            return;
-        }
         if (oUri.isServiceDescription()) {
-            oHttpHeader.oContentType.bXml = true;
+            oHttpHeader = new HttpHeader();
+            oRes.setStatusCode(oConst.StatusCode.OK);
+            oHttpHeader.setContentType(oConst.ContentType.Xml);
+            oHttpHeader.setAccessControlAllowOrigin("*");
             var oMeta = new Metadata();
             oRes.write(oMeta.generateServiceDescription());
             oRes.end(oHttpHeader);
             return;
         }
         if (oUri.isMetadata()) {
-            oHttpHeader.oContentType.bXml = true;
+            oHttpHeader = new HttpHeader();
+            oRes.setStatusCode(oConst.StatusCode.OK);
+            oHttpHeader.setContentType(oConst.ContentType.Xml);
+            oHttpHeader.setAccessControlAllowOrigin("*");
 
             var oMeta = new Metadata();
             oRes.write(oMeta.generate());
@@ -117,32 +137,34 @@ server.on("request", function (req, res) {
             return;
         }
 
-        // var sEntityName = oUri.sEntitySetName; //(sEntitySetName.substring(0, sEntitySetName.length - 3)).toLocaleLowerCase();
-        // console.log(sEntityName);
-
         if (oUri.sEntityName !== "") {
+            oHttpHeader = new HttpHeader();
             var sEntityFile = oUri.sEntityName.toLowerCase();
             var oEntity = require("./entity/" + sEntityFile);
             oEntity = new oEntity();
             if (oEntity instanceof ODataEntity) {
                 oEntity.getList({keys: oUri.aKeys, count: oUri.isCount()}, function (err, data) {
                     if (oUri.isCount()) {
-                        oHttpHeader.oContentType.bText = true;
+                        oHttpHeader.setContentType(oConst.ContentType.Text);
                     } else {
-                        oHttpHeader.oContentType.bJson = true;
+                        oHttpHeader.setContentType(oConst.ContentType.Json);
+                        oHttpHeader.setContentTypeCharset("utf-8");
                     }
                     oRes.write(JSON.stringify(data));
                     oRes.end(oHttpHeader);
                 });
                 return;
             } else {
-                res.statusCode = 500;
-                res.end(sEntityName + " is not instance of ODataEntity");
-                console.error(sEntityName + " is not instance of ODataEntity");
+                oRes.setStatusCode(oConst.StatusCode.InternalServerError);
+                oRes.write(sEntityName + " is not instance of ODataEntity");
+                oRes.end();
                 return;
             }
 
         } else {
+            oRes.setStatusCode(oConst.StatusCode.InternalServerError);
+            oRes.write("Entity Name is empty");
+            oRes.end();
             return;
         }
     }
@@ -151,13 +173,19 @@ server.on("request", function (req, res) {
         if (oUri.isBatch()) {
             var that = this;
             that.iBatchCounter = 0;
+
+            var oBatchResp = new BatchResponse();
+            var oHdr = new HttpHeader();
+            oHdr.setContentType(oConst.ContentType.Http);
+            oHdr.setContentTransferEncoding(oConst.ContentTransferEncoding.Binary);
+            oHdr.setCacheControl(oConst.CacheControl.Nocache);
+            oBatchResp.setCommonHeader(oHdr);
+
             proc(req, res, function (sQueryData) {
                 var oBatch = new Batch();
                 oBatch.Parse(sQueryData);
 
-                var i = 0;
-
-                for (i = 0; i < oBatch.getRequestCount(); i++) {
+                for (var i = 0; i < oBatch.getRequestCount(); i++) {
                     var sEntityRequest = oBatch.getRequest(i);
                     var sUrl = "/" + oUri.sServiceName + "/" + sEntityRequest;
                     oUri.parseUrl(sUrl);
@@ -165,36 +193,46 @@ server.on("request", function (req, res) {
                         var sEntityFile = oUri.sEntityName.toLowerCase();
                         var oEntity = require("./entity/" + sEntityFile);
                         oEntity = new oEntity();
+
+                        // var oBatchResp = new BatchResponse();
+                        // var oHdr = new HttpHeader();
+                        // oHdr.setContentType(oConst.ContentType.Http);
+                        // oHdr.setContentTransferEncoding(oConst.ContentTransferEncoding.Binary);
+                        // oBatchResp.setCommonHeader(oHdr);
+
                         if (oEntity instanceof ODataEntity) {
                             oEntity.getList({keys: oUri.aKeys, count: oUri.isCount()}, function (err, data, opt) {
                                 that.iBatchCounter++;
-                                var oHdr = {};
-                                oHdr = new HttpHeader();
-                                oHdr.oContentType.bHttp = true;
-                                if (opt.count) {
-                                    oHdr.oContentType2.bText = true;
-                                } else {
-                                    oHdr.oContentType2.bJson = true;
-                                }
-                                oHdr.oAccessControl.oAllow.sOrigin = "";
-                                oHdr.oCacheControl.bNocache = true;
-                                oHdr.oCacheControl.bPrivate = false;
-                                oHdr.bContentTransferEncodingBinary = true;
-                                oHdr.oAccessControl.oExpose.oHeaders.bAccessControlAllowOrigin = false;
 
-                                oBatch.addResponse(oHdr, JSON.stringify(data));
+                                var oBatchItem = new BatchItem();
+                                oBatchItem.setStatusCode(oConst.StatusCode.OK);
+
+                                oHdr = new HttpHeader();
+                                oHdr.setAccessControlAllowOrigin("*");
+                                oHdr.calculateContentLength(JSON.stringify(data));
+                                oHdr.setContentTypeCharset("utf-8");
+                                oHdr.setDataServiceVersion(oConfig.server.dataServiceVersion);
+                                if (opt.count) {
+                                    oHdr.setContentType(oConst.ContentType.Text);
+                                } else {
+                                    oHdr.setContentType(oConst.ContentType.Json);
+                                }
+                                // oHdr.setCacheControl([oConst.CacheControl.Nocache]);
+                                // oHdr.setContentTransferEncoding(oConst.ContentTransferEncoding.Binary);
+                                // oHdr.setAccessControlExposeHeaders([oConst.AccessControlHeader.AccessControlAllowOrigin]);
+                                oBatchItem.setHeader(oHdr);
+                                oBatchItem.setContent(JSON.stringify(data));
+                                oBatchResp.addItem(oBatchItem);
+                                // oBatch.addResponse(oHdr, JSON.stringify(data));
 
                                 if (that.iBatchCounter === oBatch.getRequestCount()) {
-                                    oRes.write(oBatch.generateResponseBody());
                                     var oResHdr = new HttpHeader();
-                                    oResHdr.oContentType.bMixed = true;
-                                    oResHdr.oContentType.bHttp = false;
-                                    oResHdr.oAccessControl.oAllow.sOrigin = "*";
-                                    oResHdr.oAccessControl.oExpose.oHeaders.bAccessControlAllowOrigin = true;
-                                    oResHdr.oCacheControl.bNocache = false;
-                                    oResHdr.oCacheControl.bPrivate = true;
-                                    oResHdr.bContentTransferEncodingBinary = true;
-                                    oRes.oConfig.oStatusCode.bAccepted202 = true;
+                                    oRes.setStatusCode(oConst.StatusCode.Accepted);
+                                    oResHdr.setDataServiceVersion(oConfig.server.dataServiceVersion);
+                                    oResHdr.setContentType(oConst.ContentType.Mixed);
+                                    oResHdr.setBatchId(oBatchResp.getId());
+                                    oResHdr.setAccessControlAllowOrigin("*");
+                                    oRes.write(oBatchResp.toString());
                                     oRes.end(oResHdr, oBatch.id);
                                     return;
                                 }
@@ -206,42 +244,11 @@ server.on("request", function (req, res) {
 
                     }
                 }
-
-                // var sEntityRequest = oBatch.getRequest(0);
-                // var sUrl = "/" + oUri.sServiceName + "/" + sEntityRequest;
-                // oUri.parseUrl(sUrl);
-
-                // if (oUri.sEntityName !== "") {
-                //     var sEntityFile = oUri.sEntityName.toLowerCase();
-                //     var oEntity = require("./entity/" + sEntityFile);
-                //     oEntity = new oEntity();
-                //     if (oEntity instanceof ODataEntity) {
-                //         oEntity.getList({keys: oUri.aKeys, count: oUri.isCount()}, function (err, data) {
-                //             var oHdr = new HttpHeader();
-                //             if (oUri.isCount()) {
-                //                 oHdr.oContentType.bText = true;
-                //             } else {
-                //                 oHdr.oContentType.bJson = true;
-                //             }
-                //             oBatch.addResponse(oHdr, JSON.stringify(data));
-                //         });
-                //         oRes.write(oBatch.generateResponseBody());
-                //         oRes.end(oHttpHeader);
-                //         return;
-                //     } else {
-                //         res.statusCode = 500;
-                //         res.end(sEntityName + " is not instance of ODataEntity");
-                //         console.error(sEntityName + " is not instance of ODataEntity");
-                //         return;
-                //     }
-                //
-                // }
-
-                // oRes.end(oHttpHeader);
             });
             return;
         }
     }
+
     oRes.end();
 });
 
