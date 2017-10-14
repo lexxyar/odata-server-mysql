@@ -39,51 +39,9 @@ BatchResponse.prototype.toString = function () {
         var oResp = this.aResponse[iPosition];
 
         aLines.push("--" + this.sId);
-
-        // var oHeader = null;
-
-        // oHeader = this.CommonHeader.getContentType();
-        // aLines.push(oHeader.key + ": " + oHeader.value);
-        //
-        // oHeader = this.CommonHeader.getContentTransferEncoding();
-        // aLines.push(oHeader.key + ": " + oHeader.value);
-
         aLines.push(this.CommonHeader.toString());
         aLines.push("");
-
         aLines.push(oResp.toString());
-
-
-        // // aLines.push(sGuidPrefix + this.getGuid());
-        // aLines.push(sGuidPrefix + this.id);
-        //
-        // var oHeader = {};
-        //
-        // oHeader = oResp.oHeader.getContentType(false);
-        // aLines.push(oHeader.key + ": " + oHeader.value);
-        //
-        // oHeader = oResp.oHeader.getContentTransferEncoding();
-        // aLines.push(oHeader.key + ": " + oHeader.value);
-        //
-        // aLines.push("");
-        //
-        // aLines.push("HTTP/1.1 200 OK");
-        //
-        // oHeader = oResp.oHeader.getCacheControl();
-        // aLines.push(oHeader.key + ": " + oHeader.value);
-        //
-        // oHeader = oResp.oHeader.getDataServiceVersion();
-        // aLines.push(oHeader.key + ": " + oHeader.value);
-        //
-        // oHeader = oResp.oHeader.getContentType(true, "undefined", true);
-        // aLines.push(oHeader.key + ": " + oHeader.value);
-        //
-        // // oHeader = oResp.oHeader.getAccessControlAllowOrigin();
-        // // aLines.push(oHeader.key + ": " + oHeader.value);
-        //
-        // aLines.push("");
-        //
-        // aLines.push(oResp.sBody);
     }
     aLines.push("--" + this.getId() + "--");
     return aLines.join("\r\n");

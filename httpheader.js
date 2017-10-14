@@ -141,9 +141,6 @@ HttpHeader.prototype.toArray = function () {
     if (this.aAccessControlAllowMethods.length > 0) {
         aLines.push(this.getAccessControlAllowMethods());
     }
-    if (this.aCacheControl.length > 0) {
-        aLines.push(this.getCacheControl());
-    }
     if (this.aAccessControlAllowMethods.length > 0) {
         aLines.push(this.getAccessControlAllowMethods());
     }

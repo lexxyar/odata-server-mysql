@@ -144,6 +144,7 @@ server.on("request", function (req, res) {
             oEntity = new oEntity();
             if (oEntity instanceof ODataEntity) {
                 oEntity.getList({keys: oUri.aKeys, count: oUri.isCount()}, function (err, data) {
+                    oHttpHeader.setAccessControlAllowOrigin("*");
                     if (oUri.isCount()) {
                         oHttpHeader.setContentType(oConst.ContentType.Text);
                     } else {
@@ -178,7 +179,7 @@ server.on("request", function (req, res) {
             var oHdr = new HttpHeader();
             oHdr.setContentType(oConst.ContentType.Http);
             oHdr.setContentTransferEncoding(oConst.ContentTransferEncoding.Binary);
-            oHdr.setCacheControl(oConst.CacheControl.Nocache);
+            oHdr.setCacheControl([oConst.CacheControl.Nocache]);
             oBatchResp.setCommonHeader(oHdr);
 
             proc(req, res, function (sQueryData) {
